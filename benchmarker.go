@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -303,6 +304,12 @@ func (b *Benchmarker) worker(ctx context.Context, model string, metrics *Metrics
 				resp, err = b.client.CreateStreamingCompletion(ctx, model, prompt)
 			} else {
 				resp, err = b.client.CreateCompletion(ctx, model, prompt)
+			}
+			
+			// Don't count requests cancelled by benchmark shutdown as failures
+			if err != nil && ctx.Err() != nil &&
+				(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+				return
 			}
 			
 			metrics.RecordRequest(resp, err)
